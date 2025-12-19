@@ -50,7 +50,6 @@ export const searchService = {
         searchQuery = queryData
       }
 
-      // Step 2: Fetch data from external APIs
       // TODO: Replace these API calls with your actual data provider APIs
       // Example providers: WhitePages, PeopleFinder, BeenVerified, TruthFinder, etc.
       

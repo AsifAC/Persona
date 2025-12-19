@@ -5,6 +5,17 @@ export const authService = {
   // Sign up a new user
   async signUp(email, password, firstName = '', lastName = '') {
     try {
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL_HERE' || supabaseUrl.includes('placeholder')) {
+        return {
+          data: null,
+          error: {
+            message: 'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file. See README.md for setup instructions.'
+          }
+        }
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -20,6 +31,15 @@ export const authService = {
       return { data, error: null }
     } catch (error) {
       console.error('Sign up error:', error)
+      // Provide more helpful error messages
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        return {
+          data: null,
+          error: {
+            message: 'Unable to connect to Supabase. Please check your VITE_SUPABASE_URL and ensure your Supabase project is active.'
+          }
+        }
+      }
       return { data: null, error }
     }
   },
@@ -27,6 +47,17 @@ export const authService = {
   // Sign in an existing user
   async signIn(email, password) {
     try {
+      // Check if Supabase is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      if (!supabaseUrl || supabaseUrl === 'YOUR_SUPABASE_URL_HERE' || supabaseUrl.includes('placeholder')) {
+        return {
+          data: null,
+          error: {
+            message: 'Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file. See README.md for setup instructions.'
+          }
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -36,6 +67,15 @@ export const authService = {
       return { data, error: null }
     } catch (error) {
       console.error('Sign in error:', error)
+      // Provide more helpful error messages
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        return {
+          data: null,
+          error: {
+            message: 'Unable to connect to Supabase. Please check your VITE_SUPABASE_URL and ensure your Supabase project is active.'
+          }
+        }
+      }
       return { data: null, error }
     }
   },
