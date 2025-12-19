@@ -1,0 +1,81 @@
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.oauth-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.oauth-button:hover:not(:disabled) {
+  border-color: #667eea;
+  background: #f8f9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.oauth-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.oauth-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.oauth-google {
+  border-color: #db4437;
+}
+
+.oauth-google:hover:not(:disabled) {
+  border-color: #db4437;
+  background: #fef5f5;
+}
+
+.oauth-github {
+  border-color: #333;
+  color: #333;
+}
+
+.oauth-github:hover:not(:disabled) {
+  border-color: #333;
+  background: #f5f5f5;
+}
+
+.oauth-apple {
+  border-color: #000;
+  background: #000;
+  color: white;
+}
+
+.oauth-apple:hover:not(:disabled) {
+  background: #333;
+  border-color: #333;
+}
+
+.oauth-microsoft {
+  border-color: #0078d4;
+}
+
+.oauth-microsoft:hover:not(:disabled) {
+  border-color: #0078d4;
+  background: #f0f8ff;
+}
+

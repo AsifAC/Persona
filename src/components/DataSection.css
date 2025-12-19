@@ -1,0 +1,58 @@
+.data-section {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.data-section h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 1.3rem;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.empty-message {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.data-item {
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.data-field {
+  display: flex;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.data-field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  font-weight: 600;
+  color: #555;
+  text-transform: capitalize;
+  min-width: 120px;
+}
+
+.field-value {
+  color: #333;
+  flex: 1;
+}
+
