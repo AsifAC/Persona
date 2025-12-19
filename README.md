@@ -1,227 +1,298 @@
-# Persona - People Search Application
+# Persona
 
-A comprehensive people search application similar to BeenVerified and TruthFinder, built with React, Vite, and Supabase.
+A people search application that aggregates public records data from multiple external APIs and provides comprehensive person profiles. Built with React 19, Vite, and Supabase.
 
-## Features
+## Architecture
 
-- 🔐 User authentication and profiles
-- 🔍 Advanced people search by name, age, and location
-- 📊 Comprehensive search results including:
-  - Addresses
-  - Phone numbers
-  - Social media profiles
-  - Criminal records
-  - Known relatives
-- 📜 Search history tracking
-- ⭐ Favorite searches
-- 🎨 Modern, user-friendly interface
+Persona is a single-page application that implements a service-oriented architecture with clear separation between presentation, business logic, and data persistence layers.
 
-## Tech Stack
+### Technology Stack
 
-- **Frontend**: React 19, Vite
-- **Backend/Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Routing**: React Router DOM
-- **HTTP Client**: Axios
+- **Frontend Framework**: React 19 with functional components and hooks
+- **Build Tool**: Vite 7.2.4
+- **Routing**: React Router DOM 6.26.0 with protected route implementation
+- **Backend Services**: Supabase (PostgreSQL database, authentication, Row Level Security)
+- **HTTP Client**: Axios 1.7.7 for external API communication
+- **State Management**: React Context API for authentication state
 
-## Setup Instructions
+### Application Structure
 
-### 1. Install Dependencies
+The application follows a modular component architecture:
 
-```bash
-npm install
+```
+src/
+├── components/          # Reusable UI components
+│   ├── Login.jsx       # Authentication form component
+│   ├── Register.jsx    # User registration component
+│   ├── SearchForm.jsx  # Search query input component
+│   ├── PersonCard.jsx  # Person profile display component
+│   ├── DataSection.jsx # Collapsible data section component
+│   ├── ProtectedRoute.jsx # Route guard for authenticated routes
+│   └── ErrorBoundary.jsx  # React error boundary implementation
+├── pages/              # Route-level page components
+│   ├── Dashboard.jsx   # Main search interface
+│   ├── SearchResults.jsx # Search results display
+│   ├── SearchHistory.jsx # Historical search queries
+│   ├── Favorites.jsx   # Favorite search results
+│   └── Profile.jsx     # User profile management
+├── services/           # Business logic layer
+│   ├── authService.js  # Supabase authentication wrapper
+│   ├── searchService.js # Person search and data aggregation
+│   ├── userService.js  # User profile operations
+│   └── guestService.js # LocalStorage-based guest mode
+├── contexts/           # React context providers
+│   └── AuthContext.jsx # Global authentication state
+└── config/             # Configuration modules
+    ├── supabase.js     # Supabase client initialization
+    └── api.js          # External API configuration
 ```
 
-### 2. Set Up Supabase
+## Core Functionality
 
-1. Create a new project at [Supabase](https://supabase.com)
-2. Go to your project settings → API
-3. Copy your **Project URL** and **anon/public key**
+### Authentication System
 
-### 3. Configure Environment Variables
+The application implements dual authentication modes:
 
-Create a `.env` file in the root directory:
+**Authenticated Mode**: Uses Supabase Auth with email/password and OAuth providers (Google, GitHub). User data is persisted in PostgreSQL with Row Level Security policies enforcing data isolation.
 
-```env
-# Supabase Configuration
-# Get these from: https://app.supabase.com/project/_/settings/api
-VITE_SUPABASE_URL=your_supabase_project_url_here
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+**Guest Mode**: LocalStorage-based session that allows limited functionality without account creation. Search queries and results are stored locally on the device.
 
-# External API Keys
-# Replace with your actual API keys from data provider services
-# Example services: WhitePages, PeopleFinder, BeenVerified, TruthFinder, etc.
-VITE_PEOPLE_DATA_API_KEY=your_people_data_api_key_here
-VITE_PEOPLE_DATA_API_URL=https://api.example.com/v1
+Authentication state is managed through `AuthContext` which provides:
+- `user`: Current authenticated user object
+- `isGuest`: Boolean flag indicating guest mode
+- `signIn(email, password)`: Email/password authentication
+- `signUp(email, password, firstName, lastName)`: User registration
+- `signInWithOAuth(provider)`: OAuth provider authentication
+- `signOut()`: Session termination
+- `isLoading`: Authentication state loading indicator
 
-# Criminal Records API (if using separate service)
-VITE_CRIMINAL_RECORDS_API_KEY=your_criminal_records_api_key_here
-VITE_CRIMINAL_RECORDS_API_URL=https://api.criminalrecords.com/v1
+### Search Workflow
 
-# Social Media API (if using separate service)
-VITE_SOCIAL_MEDIA_API_KEY=your_social_media_api_key_here
-VITE_SOCIAL_MEDIA_API_URL=https://api.socialmedia.com/v1
+The search process follows a multi-stage pipeline:
+
+1. **Query Validation**: Validates required fields (first name, last name) and optional parameters (age, location)
+
+2. **Query Persistence**: 
+   - Authenticated: Inserts into `search_queries` table with user_id foreign key
+   - Guest: Stores in LocalStorage with generated UUID
+
+3. **Parallel API Aggregation**: Executes concurrent requests to external data providers:
+   - `fetchPersonData()`: Core person information
+   - `fetchAddresses()`: Address history records
+   - `fetchPhoneNumbers()`: Phone number records
+   - `fetchSocialMedia()`: Social media profile links
+   - `fetchCriminalRecords()`: Criminal background data
+   - `fetchRelatives()`: Known relative associations
+
+4. **Profile Creation/Update**: 
+   - Checks for existing `person_profiles` record by name match
+   - Creates new profile or updates existing with latest metadata
+   - Inserts related data into normalized tables (addresses, phone_numbers, social_media, criminal_records, relatives)
+
+5. **Confidence Score Calculation**: Computes match confidence based on data availability:
+   - Person data: 30 points
+   - Addresses: 20 points (5 points per address, max 20)
+   - Phone numbers: 20 points (5 points per number, max 20)
+   - Social media: 15 points (3 points per profile, max 15)
+   - Criminal records: 10 points (binary)
+   - Relatives: 5 points (1 point per relative, max 5)
+   - Final score: (total_points / 100) * 100
+
+6. **Result Persistence**: Creates `search_results` record linking query, profile, and confidence score
+
+### Data Model
+
+The database schema implements a normalized relational structure:
+
+**Core Tables**:
+- `profiles`: User profile data linked to Supabase Auth users
+- `search_queries`: Search query parameters with user association
+- `person_profiles`: Aggregated person data with JSONB metadata field
+- `search_results`: Junction table linking queries to profiles with confidence scores
+
+**Related Data Tables**:
+- `addresses`: Address history with temporal data (start_date, end_date, is_current)
+- `phone_numbers`: Phone records with type classification and verification timestamps
+- `social_media`: Platform-specific social media profiles with activity timestamps
+- `criminal_records`: Case records with jurisdiction and status information
+- `relatives`: Relative associations with relationship type
+
+**Auxiliary Tables**:
+- `search_history`: Chronological search activity log
+- `favorites`: User's favorite search results
+
+All tables implement UUID primary keys, foreign key constraints with CASCADE deletion, and timestamp tracking (created_at, updated_at, last_updated).
+
+### External API Integration
+
+The application is designed to integrate with multiple external data provider APIs. API configuration is centralized in `src/config/api.js`:
+
+```javascript
+API_CONFIG = {
+  PEOPLE_DATA: {
+    API_KEY: process.env.VITE_PEOPLE_DATA_API_KEY,
+    BASE_URL: process.env.VITE_PEOPLE_DATA_API_URL,
+    ENDPOINTS: { SEARCH, DETAILS }
+  },
+  CRIMINAL_RECORDS: { ... },
+  SOCIAL_MEDIA: { ... }
+}
 ```
 
-### 4. Set Up Database
+API requests are made through `makeAPIRequest()` helper which handles:
+- Authorization header injection
+- Content-Type header management
+- Error handling and response parsing
+- HTTP status code validation
 
-1. Open your Supabase project dashboard
-2. Go to SQL Editor
-3. Copy and paste the contents of `database/schema.sql`
-4. Run the SQL script to create all tables, indexes, and security policies
+Each data fetch function (`fetchPersonData`, `fetchAddresses`, etc.) implements:
+- Promise-based async/await pattern
+- Error handling with fallback to empty arrays/objects
+- Response normalization for consistent data structure
+- Mock data fallback when API keys are not configured
 
-### 5. Configure External APIs
+### Service Layer
 
-The application is designed to work with external people data APIs. You'll need to:
+**searchService.js**: Core search orchestration
+- `searchPerson(query)`: Main search entry point
+- `createOrUpdatePersonProfile(data)`: Profile CRUD operations
+- `calculateConfidenceScore(data)`: Match confidence algorithm
+- `getSearchResult(resultId)`: Result retrieval with joins
 
-1. **Choose a data provider** (examples):
-   - WhitePages API
-   - PeopleFinder API
-   - BeenVerified API (if available)
-   - TruthFinder API (if available)
-   - Other public records APIs
+**authService.js**: Authentication abstraction
+- Wraps Supabase Auth methods with consistent error handling
+- Provides OAuth provider integration
+- Manages session state and password reset flows
 
-2. **Update API configuration** in `src/config/api.js`:
-   - Replace API endpoints with your provider's endpoints
-   - Adjust request/response formats to match your API provider
-   - Update the data mapping in `src/services/searchService.js`
+**userService.js**: User profile operations
+- Profile CRUD operations
+- Search history retrieval
+- Favorites management
 
-3. **API Integration Points**:
-   - `fetchPersonData()` - Main person information
-   - `fetchAddresses()` - Address history
-   - `fetchPhoneNumbers()` - Phone number records
-   - `fetchSocialMedia()` - Social media profiles
-   - `fetchCriminalRecords()` - Criminal background
-   - `fetchRelatives()` - Known relatives
+**guestService.js**: LocalStorage persistence
+- Implements same interface as authenticated services
+- Uses LocalStorage with JSON serialization
+- Generates UUIDs for local entity identification
 
-### 6. Run the Development Server
+### Security Implementation
 
+**Row Level Security (RLS)**: All database tables have RLS policies enforcing:
+- Users can only access their own search queries and results
+- Profile data is read-only for authenticated users
+- Write operations require authentication
+- Guest mode bypasses RLS (uses LocalStorage)
+
+**Protected Routes**: `ProtectedRoute` component wraps authenticated pages:
+- Redirects to `/login` if unauthenticated
+- Allows guest mode access with limited functionality
+- Preserves intended destination for post-authentication redirect
+
+**API Key Management**: External API keys are stored in environment variables and never exposed to client-side code. Supabase anon key is safe for client-side use per Supabase security model.
+
+## Usage
+
+### Search Interface
+
+The Dashboard component (`/dashboard`) provides the primary search interface:
+
+1. Enter search parameters:
+   - First Name (required)
+   - Last Name (required)
+   - Age (optional)
+   - Location (optional)
+
+2. Submit query triggers `searchService.searchPerson()` which:
+   - Validates input
+   - Persists query
+   - Aggregates data from external APIs
+   - Creates/updates person profile
+   - Calculates confidence score
+   - Navigates to `/results` with result data
+
+### Search Results
+
+The SearchResults page displays:
+- Person profile card with basic information
+- Confidence score indicator
+- Collapsible data sections:
+  - Addresses (with temporal information)
+  - Phone Numbers (with type classification)
+  - Social Media (with platform and activity)
+  - Criminal Records (with case details)
+  - Relatives (with relationship types)
+
+Each result can be added to favorites, which creates a record in the `favorites` table (authenticated) or LocalStorage (guest).
+
+### Search History
+
+The SearchHistory page (`/history`) displays chronological list of all search queries:
+- Query parameters (name, age, location)
+- Timestamp
+- Link to view result
+- Option to re-run search
+
+### Favorites
+
+The Favorites page (`/favorites`) displays all favorite search results:
+- Quick access to frequently referenced profiles
+- Remove from favorites functionality
+- Direct navigation to full result view
+
+### User Profile
+
+The Profile page (`/profile`) provides:
+- User account information display
+- OAuth provider linking status
+- Password change functionality
+- Account deletion (with data cascade)
+
+## Development
+
+### Environment Variables
+
+Required environment variables:
+
+```
+VITE_SUPABASE_URL=<supabase_project_url>
+VITE_SUPABASE_ANON_KEY=<supabase_anon_key>
+VITE_PEOPLE_DATA_API_KEY=<external_api_key>
+VITE_PEOPLE_DATA_API_URL=<external_api_base_url>
+VITE_CRIMINAL_RECORDS_API_KEY=<criminal_records_api_key>
+VITE_CRIMINAL_RECORDS_API_URL=<criminal_records_api_base_url>
+VITE_SOCIAL_MEDIA_API_KEY=<social_media_api_key>
+VITE_SOCIAL_MEDIA_API_URL=<social_media_api_base_url>
+```
+
+### Database Schema
+
+The database schema is defined in `database/schema.sql`. Execute this script in the Supabase SQL Editor to initialize:
+- All tables with proper constraints
+- Indexes for performance optimization
+- Row Level Security policies
+- Database triggers for timestamp updates
+
+Additional SQL scripts:
+- `database/fix_security_performance.sql`: RLS policy updates and performance indexes
+- `database/update_oauth_profile_trigger.sql`: OAuth profile synchronization trigger
+
+### Build and Deployment
+
+Development server:
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`
-
-## Project Structure
-
-```
-persona/
-├── database/
-│   └── schema.sql          # Database schema for Supabase
-├── public/
-├── src/
-│   ├── components/         # Reusable React components
-│   │   ├── Login.jsx
-│   │   ├── Register.jsx
-│   │   ├── SearchForm.jsx
-│   │   ├── PersonCard.jsx
-│   │   ├── DataSection.jsx
-│   │   └── ProtectedRoute.jsx
-│   ├── pages/              # Page components
-│   │   ├── Dashboard.jsx
-│   │   ├── SearchResults.jsx
-│   │   ├── SearchHistory.jsx
-│   │   ├── Favorites.jsx
-│   │   └── Profile.jsx
-│   ├── services/           # Business logic services
-│   │   ├── authService.js
-│   │   ├── searchService.js
-│   │   └── userService.js
-│   ├── contexts/           # React contexts
-│   │   └── AuthContext.jsx
-│   ├── config/             # Configuration files
-│   │   ├── supabase.js
-│   │   └── api.js
-│   ├── App.jsx             # Main app component
-│   ├── main.jsx            # Entry point
-│   └── index.css           # Global styles
-├── .env                    # Environment variables (create this)
-├── .env.example            # Example environment variables
-└── package.json
-```
-
-## Key Files to Configure
-
-### 1. `src/config/supabase.js`
-- Replace `YOUR_SUPABASE_URL_HERE` with your Supabase project URL
-- Replace `YOUR_SUPABASE_ANON_KEY_HERE` with your Supabase anon key
-
-### 2. `src/config/api.js`
-- Update `API_CONFIG.PEOPLE_DATA` with your people data API credentials
-- Update `API_CONFIG.CRIMINAL_RECORDS` with your criminal records API credentials
-- Update `API_CONFIG.SOCIAL_MEDIA` with your social media API credentials
-- Adjust `ENDPOINTS` to match your API provider's endpoints
-
-### 3. `src/services/searchService.js`
-- Modify API request formats to match your provider's API
-- Adjust response parsing based on your API's response structure
-- Update data mapping for addresses, phone numbers, etc.
-
-## API Integration Guide
-
-The search service makes API calls to external data providers. Here's how to integrate:
-
-1. **API Request Format**: Update the request body/headers in each fetch function
-2. **Response Parsing**: Adjust how responses are parsed based on your API's format
-3. **Error Handling**: Add appropriate error handling for API failures
-4. **Rate Limiting**: Implement rate limiting if your API has restrictions
-
-Example API integration structure:
-```javascript
-async fetchPersonData(query) {
-  const response = await fetch('YOUR_API_ENDPOINT', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${API_CONFIG.PEOPLE_DATA.API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      first_name: query.firstName,
-      last_name: query.lastName,
-      // ... other parameters
-    }),
-  })
-  return await response.json()
-}
-```
-
-## Building for Production
-
+Production build:
 ```bash
 npm run build
 ```
 
-The built files will be in the `dist/` directory.
-
-## Security Notes
-
-- Never commit your `.env` file to version control
-- Keep your API keys secure
-- Supabase Row Level Security (RLS) is enabled to protect user data
-- All database queries are protected by RLS policies
-
-## Troubleshooting
-
-### Supabase Connection Issues
-- Verify your Supabase URL and anon key are correct
-- Check that your Supabase project is active
-- Ensure RLS policies are set up correctly
-
-### API Integration Issues
-- Check API endpoint URLs are correct
-- Verify API keys are valid
-- Review API documentation for request/response formats
-- Check browser console for detailed error messages
-
-### Database Issues
-- Ensure you've run the schema.sql script
-- Check Supabase dashboard for any errors
-- Verify RLS policies are enabled
+Output directory: `dist/` (static assets ready for deployment to any static hosting service)
 
 ## License
 
-This project is private and proprietary.
+This project is private and proprietary. Copyright (c) 2025 Asif Chowdhury.
 
 ## Support
 
-For issues or questions, please refer to the code comments marked with `TODO:` for configuration points.
+For issues or questions, please check the troubleshooting section above or review the configuration files mentioned in the setup instructions.
