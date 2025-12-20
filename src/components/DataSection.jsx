@@ -18,8 +18,8 @@ export default function DataSection({ title, data, emptyMessage = 'No data avail
         {data.map((item, index) => (
           <div key={item.id || index} className="data-item">
             {Object.entries(item).map(([key, value]) => {
-              // Skip id and person_profile_id fields
-              if (key === 'id' || key === 'person_profile_id') return null
+              // Skip id, person_profile_id, and internal _raw fields
+              if (key === 'id' || key === 'person_profile_id' || key === '_raw') return null
               // Skip null or empty values
               if (value === null || value === '') return null
               return (
