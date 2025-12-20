@@ -274,6 +274,15 @@ The database schema is defined in `database/schema.sql`. Execute this script in 
 Additional SQL scripts:
 - `database/fix_security_performance.sql`: RLS policy updates and performance indexes
 - `database/update_oauth_profile_trigger.sql`: OAuth profile synchronization trigger
+- `database/fix_person_profiles_rls.sql`: RLS policies for person_profiles table
+
+### Security
+
+See `SECURITY.md` for security configuration, including:
+- Leaked password protection (Have I Been Pwned) setup
+- Password policy recommendations
+- Multi-factor authentication guidance
+- Security monitoring best practices
 
 ### Build and Deployment
 

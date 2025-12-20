@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { userService } from '../services/userService'
+import { authService } from '../services/authService'
 import './Profile.css'
 
 export default function Profile() {
@@ -15,6 +16,14 @@ export default function Profile() {
     firstName: '',
     lastName: '',
   })
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSuccess, setPasswordSuccess] = useState('')
 
   useEffect(() => {
     loadProfile()
@@ -48,6 +57,64 @@ export default function Profile() {
     } catch (error) {
       console.error('Error updating profile:', error)
       alert('Failed to update profile')
+    }
+  }
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSuccess('')
+
+    // Validation
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters')
+      return
+    }
+
+    setChangingPassword(true)
+
+    try {
+      // First verify current password by attempting to sign in
+      const { error: signInError } = await authService.signIn(user.email, passwordData.currentPassword)
+      if (signInError) {
+        setPasswordError('Current password is incorrect')
+        setChangingPassword(false)
+        return
+      }
+
+      // Update password
+      const { error } = await authService.updatePassword(passwordData.newPassword)
+      if (error) {
+        // Handle leaked password errors from Have I Been Pwned (HIBP)
+        const errorMessage = error.message || 'Failed to update password'
+        if (errorMessage.toLowerCase().includes('pwned') || 
+            errorMessage.toLowerCase().includes('breach') ||
+            errorMessage.toLowerCase().includes('compromised') ||
+            errorMessage.toLowerCase().includes('common password') ||
+            errorMessage.toLowerCase().includes('too common')) {
+          setPasswordError('This password was found in a known data breach. Please choose a different, more secure password.')
+        } else {
+          setPasswordError(errorMessage)
+        }
+      } else {
+        setPasswordSuccess('Password updated successfully')
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        })
+        // Clear success message after 3 seconds
+        setTimeout(() => setPasswordSuccess(''), 3000)
+      }
+    } catch (err) {
+      setPasswordError('An unexpected error occurred')
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -151,6 +218,70 @@ export default function Profile() {
               Edit Profile
             </button>
           )}
+        </div>
+
+        <div className="profile-section">
+          <h2>Change Password</h2>
+          {passwordSuccess && (
+            <div className="success-message" style={{ color: 'green', marginBottom: '1rem' }}>
+              {passwordSuccess}
+            </div>
+          )}
+          {passwordError && (
+            <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
+              {passwordError}
+            </div>
+          )}
+          <form onSubmit={handlePasswordChange}>
+            <div className="profile-field">
+              <label htmlFor="currentPassword">Current Password</label>
+              <input
+                type="password"
+                id="currentPassword"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                className="edit-input"
+                required
+                disabled={changingPassword}
+              />
+            </div>
+            <div className="profile-field">
+              <label htmlFor="newPassword">New Password</label>
+              <input
+                type="password"
+                id="newPassword"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                className="edit-input"
+                required
+                minLength={6}
+                disabled={changingPassword}
+              />
+              <small style={{ display: 'block', marginTop: '0.25rem', color: '#666' }}>
+                Must be at least 6 characters. Avoid passwords found in data breaches.
+              </small>
+            </div>
+            <div className="profile-field">
+              <label htmlFor="confirmPassword">Confirm New Password</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                className="edit-input"
+                required
+                minLength={6}
+                disabled={changingPassword}
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="save-button"
+              disabled={changingPassword}
+            >
+              {changingPassword ? 'Updating Password...' : 'Update Password'}
+            </button>
+          </form>
         </div>
 
         <div className="danger-zone">
