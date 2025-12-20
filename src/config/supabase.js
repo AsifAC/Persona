@@ -4,7 +4,6 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// TODO: Replace with your Supabase URL and Anon Key
 // You can find these in your Supabase project settings
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL_HERE'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY_HERE'
@@ -32,5 +31,12 @@ if (!supabaseAnonKey || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY_HERE' || sup
   console.log('✅ Supabase Anon Key configured')
 }
 
-export const supabase = createClient(finalUrl, finalKey)
+// Create Supabase client with auto-refresh enabled
+export const supabase = createClient(finalUrl, finalKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+})
 
