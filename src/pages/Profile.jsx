@@ -1,7 +1,7 @@
 // Profile Page
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/useAuth'
 import { userService } from '../services/userService'
 import { authService } from '../services/authService'
 import './Profile.css'
@@ -111,7 +111,8 @@ export default function Profile() {
         // Clear success message after 3 seconds
         setTimeout(() => setPasswordSuccess(''), 3000)
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Password change error:', error)
       setPasswordError('An unexpected error occurred')
     } finally {
       setChangingPassword(false)

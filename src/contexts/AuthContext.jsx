@@ -1,44 +1,46 @@
 // Authentication Context for managing user state
-import { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import { authService } from '../services/authService'
 import { guestService } from '../services/guestService'
-
-const AuthContext = createContext(null)
-
-export const useAuth = () => {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+import { AuthContext } from './authContextStore'
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
+  const [initialGuestProfile] = useState(() => {
+    if (!guestService.isGuestMode()) return null
+    return guestService.getProfile() || null
+  })
+  const [user, setUser] = useState(() => {
+    if (!initialGuestProfile) return null
+    return {
+      id: initialGuestProfile.id,
+      email: initialGuestProfile.email,
+      user_metadata: {
+        first_name: initialGuestProfile.first_name,
+        last_name: initialGuestProfile.last_name,
+      },
+    }
+  })
   const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isGuest, setIsGuest] = useState(false)
+  const [loading, setLoading] = useState(() => !initialGuestProfile)
+  const [isGuest, setIsGuest] = useState(() => !!initialGuestProfile)
+
+  const applyAuthenticatedSession = (nextSession) => {
+    setSession(nextSession)
+    setUser(nextSession?.user ?? null)
+    setIsGuest(false)
+    setLoading(false)
+  }
+
+  const clearLoading = () => {
+    setLoading(false)
+  }
 
   useEffect(() => {
     let subscription = null
 
-    // Check for guest mode first
-    if (guestService.isGuestMode()) {
-      const guestProfile = guestService.getProfile()
-      if (guestProfile) {
-        setUser({
-          id: guestProfile.id,
-          email: guestProfile.email,
-          user_metadata: {
-            first_name: guestProfile.first_name,
-            last_name: guestProfile.last_name,
-          },
-        })
-        setIsGuest(true)
-        setLoading(false)
-        return
-      }
+    if (initialGuestProfile) {
+      return () => {}
     }
 
     // Get initial session for authenticated users
@@ -47,14 +49,11 @@ export const AuthProvider = ({ children }) => {
         if (error) {
           console.error('Error getting session:', error)
         }
-        setSession(session)
-        setUser(session?.user ?? null)
-        setIsGuest(false)
-        setLoading(false)
+        applyAuthenticatedSession(session)
       })
       .catch((error) => {
         console.error('Error in getSession:', error)
-        setLoading(false)
+        clearLoading()
       })
 
     // Listen for auth changes (only for authenticated users)
@@ -62,10 +61,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const authStateResult = authService.onAuthStateChange(
           async (event, session) => {
-            setSession(session)
-            setUser(session?.user ?? null)
-            setIsGuest(false)
-            setLoading(false)
+            applyAuthenticatedSession(session)
           }
         )
 
@@ -74,7 +70,6 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Error setting up auth state listener:', error)
-        setLoading(false)
       }
     }
 
@@ -87,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     }
-  }, [])
+  }, [initialGuestProfile])
 
   const signUp = async (email, password, firstName, lastName) => {
     setLoading(true)
@@ -146,7 +141,7 @@ export const AuthProvider = ({ children }) => {
     return { data, error }
   }
 
-  const value = useMemo(() => ({
+  const value = {
     user,
     session,
     loading,
@@ -157,7 +152,7 @@ export const AuthProvider = ({ children }) => {
     signInWithOAuth,
     isAuthenticated: !!user,
     isGuest,
-  }), [user, session, loading, isGuest])
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -6,43 +6,70 @@
 // - Criminal Records
 // - Property Records, Relatives, and more
 
+import { supabase } from './supabase'
+
 export const API_CONFIG = {
   // EnformionGO API Configuration
+  // Documentation: https://enformiongo.readme.io/reference/overview
   ENFORMIONGO: {
-    API_KEY_NAME: import.meta.env.VITE_ENFORMIONGO_API_KEY_NAME || 'fe41ff8ada4e49e99a6f5c6d16ea7ab3',
-    API_KEY_PASSWORD: import.meta.env.VITE_ENFORMIONGO_API_KEY_PASSWORD || '6927a7dd1e16494eae1b74c41427e239',
-    BASE_URL: import.meta.env.VITE_ENFORMIONGO_BASE_URL || 'https://api.enformiongo.com/v1',
-    ENDPOINTS: {
-      PEOPLE_SEARCH: '/people/search',
-      CONTACT_ENRICHMENT: '/contact/enrichment',
-      ADDRESS_SEARCH: '/address/search',
-      PHONE_SEARCH: '/phone/search',
-      CRIMINAL_RECORDS: '/criminal/records',
-      PROPERTY_RECORDS: '/property/records',
-      RELATIVES: '/relatives/search',
-      SOCIAL_MEDIA: '/social/search',
+    PROXY_URL: import.meta.env.VITE_ENFORMIONGO_PROXY_URL,
+    // Search types for galaxy-search-type header
+    // See: https://enformiongo.readme.io/reference/overview
+    SEARCH_TYPES: {
+      PEOPLE_SEARCH: 'PersonSearch',
+      CONTACT_ENRICHMENT: 'DevAPIContactEnrich',
+      CONTACT_ENRICHMENT_PLUS: 'DevAPIContactEnrichPlus',
+      REVERSE_PHONE: 'ReversePhoneSearch',
+      CRIMINAL_RECORDS: 'CriminalSearchV2',
+      PROPERTY_RECORDS: 'PropertySearchV2',
+      // Note: These may need to be verified against actual API documentation
+      ADDRESS_SEARCH: 'AddressID',
+      RELATIVES: 'PersonSearch', // May need separate endpoint
+      SOCIAL_MEDIA: 'PersonSearch', // May need separate endpoint
     }
   }
 }
 
-// Helper function to make EnformionGO API requests with Basic Auth
-export const makeEnformionGORequest = async (endpoint, body = {}) => {
+// Helper function to make EnformionGO API requests
+// Uses header-based authentication as per: https://enformiongo.readme.io/reference/overview
+export const makeEnformionGORequest = async (searchType, body = {}) => {
   try {
-    const { API_KEY_NAME, API_KEY_PASSWORD, BASE_URL } = API_CONFIG.ENFORMIONGO
+    const { PROXY_URL } = API_CONFIG.ENFORMIONGO
+    const proxyUrl = PROXY_URL || (import.meta.env.VITE_SUPABASE_URL
+      ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enformion-proxy`
+      : '')
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    if (!anonKey) {
+      throw new Error('Supabase anon key not configured. Please set VITE_SUPABASE_ANON_KEY in .env file.')
+    }
     
-    // Create Basic Auth header
-    const credentials = btoa(`${API_KEY_NAME}:${API_KEY_PASSWORD}`)
+    // Check if proxy URL is configured
+    if (!proxyUrl || proxyUrl.includes('placeholder')) {
+      console.warn('EnformionGO proxy URL not configured. Using fallback behavior.')
+      throw new Error('EnformionGO proxy URL not configured. Please set VITE_ENFORMIONGO_PROXY_URL or VITE_SUPABASE_URL in .env file.')
+    }
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const authToken = session?.access_token || anonKey
     
-    const url = `${BASE_URL}${endpoint}`
+    // Requests are routed through a Supabase Edge Function proxy to avoid CORS.
+    const url = proxyUrl
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}`,
+        Authorization: `Bearer ${authToken}`,
+        apikey: anonKey,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        searchType,
+        body,
+      }),
     })
+
+    const contentType = response.headers.get('content-type') || ''
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -50,8 +77,19 @@ export const makeEnformionGORequest = async (endpoint, body = {}) => {
       throw new Error(`EnformionGO API request failed: ${response.status} ${response.statusText}`)
     }
 
+    if (!contentType.includes('application/json')) {
+      const text = await response.text()
+      console.error('EnformionGO API returned non-JSON response:', text.slice(0, 200))
+      throw new Error('EnformionGO API returned non-JSON response. Check ENFORMIONGO_BASE_URL and upstream behavior.')
+    }
+
     return await response.json()
   } catch (error) {
+    // If it's a network error (domain not found), provide helpful message
+    if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
+      console.error('EnformionGO API network error - domain may be incorrect:', error)
+      throw new Error('EnformionGO proxy endpoint not reachable. Please verify your Supabase project URL and Edge Function deployment.')
+    }
     console.error('EnformionGO API request error:', error)
     throw error
   }

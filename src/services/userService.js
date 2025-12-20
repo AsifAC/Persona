@@ -74,11 +74,7 @@ export const userService = {
         .from('search_history')
         .select(`
           *,
-          search_queries (*),
-          search_results (
-            *,
-            person_profiles (*)
-          )
+          search_queries (*)
         `)
         .eq('user_id', user.id)
         .order('searched_at', { ascending: false })
@@ -158,11 +154,7 @@ export const userService = {
         .from('favorite_searches')
         .select(`
           *,
-          search_queries (*),
-          search_results (
-            *,
-            person_profiles (*)
-          )
+          search_queries (*)
         `)
         .eq('user_id', user.id)
         .order('favorited_at', { ascending: false })
@@ -246,6 +238,80 @@ export const userService = {
       return { success: true }
     } catch (error) {
       console.error('Error deleting search history:', error)
+      throw error
+    }
+  },
+
+  // Get search result by search query ID
+  async getSearchResultByQueryId(searchQueryId) {
+    if (isGuestMode()) {
+      return guestService.getSearchResultByQueryId(searchQueryId)
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
+      const { data, error } = await supabase
+        .from('search_results')
+        .select(`
+          *,
+          search_queries (*),
+          person_profiles (
+            *,
+            addresses (*),
+            phone_numbers (*),
+            social_media (*),
+            criminal_records (*),
+            relatives (*)
+          )
+        `)
+        .eq('search_query_id', searchQueryId)
+        .single()
+
+      if (error) throw error
+
+      const personProfile = data.person_profiles
+      const propertyRecords = personProfile?.metadata?.propertyRecords || []
+
+      return {
+        searchQuery: data.search_queries,
+        searchQueryId: data.search_queries?.id,
+        searchResult: data,
+        personProfile,
+        confidenceScore: data.confidence_score,
+        addresses: personProfile?.addresses || [],
+        phoneNumbers: personProfile?.phone_numbers || [],
+        socialMedia: personProfile?.social_media || [],
+        criminalRecords: personProfile?.criminal_records || [],
+        relatives: personProfile?.relatives || [],
+        propertyRecords,
+      }
+    } catch (error) {
+      console.error('Error fetching search result:', error)
+      throw error
+    }
+  },
+
+  // Delete all search history items
+  async deleteAllSearchHistory() {
+    if (isGuestMode()) {
+      return guestService.deleteAllSearchHistory()
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
+      const { error } = await supabase
+        .from('search_history')
+        .delete()
+        .eq('user_id', user.id)
+
+      if (error) throw error
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting all search history:', error)
       throw error
     }
   },

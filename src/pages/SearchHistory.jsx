@@ -40,8 +40,11 @@ export default function SearchHistory() {
         }
       }
       
-      // For authenticated users, navigate to dashboard
-      // In a full implementation, you'd fetch the result from the database
+      const result = await userService.getSearchResultByQueryId(searchQuery.id)
+      if (result) {
+        navigate('/results', { state: { result } })
+        return
+      }
       navigate('/dashboard')
     } catch (error) {
       console.error('Error loading result:', error)
@@ -77,6 +80,20 @@ export default function SearchHistory() {
     }
   }
 
+  const handleClearHistory = async () => {
+    if (!confirm('Clear all search history entries?')) {
+      return
+    }
+
+    try {
+      await userService.deleteAllSearchHistory()
+      await loadHistory()
+    } catch (error) {
+      console.error('Error clearing search history:', error)
+      alert('Failed to clear search history')
+    }
+  }
+
   if (loading) {
     return (
       <div className="history-container">
@@ -89,9 +106,16 @@ export default function SearchHistory() {
     <div className="history-container">
       <div className="history-header">
         <h1>Search History</h1>
-        <button onClick={() => navigate('/dashboard')} className="back-button">
-          ← Back to Dashboard
-        </button>
+        <div className="history-header-actions">
+          <button onClick={() => navigate('/dashboard')} className="back-button">
+            ← Back to Dashboard
+          </button>
+          {history.length > 0 && (
+            <button onClick={handleClearHistory} className="delete-button delete-all">
+              Clear History
+            </button>
+          )}
+        </div>
       </div>
 
       {history.length === 0 ? (
@@ -133,7 +157,7 @@ export default function SearchHistory() {
                     className="delete-button delete-all"
                     title="Delete search and all related data"
                   >
-                    Delete All
+                    Delete Search
                   </button>
                 )}
               </div>

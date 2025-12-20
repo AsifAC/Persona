@@ -2,6 +2,7 @@
 import { supabase } from '../config/supabase'
 import { API_CONFIG, makeEnformionGORequest } from '../config/api'
 import { guestService } from './guestService'
+import { ensureValidSession } from '../utils/sessionHelper'
 
 // Helper to check if in guest mode
 const isGuestMode = () => {
@@ -188,11 +189,12 @@ export const searchService = {
   // Fetch person data from EnformionGO API
   async fetchPersonData(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.PEOPLE_SEARCH, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        age: query.age || null,
-        location: query.location || null,
+      // EnformionGO Person Search expects: FirstName, LastName (capitalized)
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.PEOPLE_SEARCH, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Age: query.age || null,
+        Location: query.location || null,
       })
 
       // Map EnformionGO response to our data structure
@@ -235,10 +237,10 @@ export const searchService = {
   // Fetch addresses from EnformionGO API
   async fetchAddresses(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.ADDRESS_SEARCH, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.ADDRESS_SEARCH, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO returns address history
@@ -269,10 +271,10 @@ export const searchService = {
   // Fetch phone numbers from EnformionGO API
   async fetchPhoneNumbers(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.PHONE_SEARCH, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.REVERSE_PHONE, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO returns phone number history
@@ -296,12 +298,13 @@ export const searchService = {
   },
 
   // Fetch social media profiles from EnformionGO API
+  // Note: Social media may be included in PersonSearch results
   async fetchSocialMedia(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.SOCIAL_MEDIA, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.PEOPLE_SEARCH, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO returns social media profiles
@@ -327,10 +330,10 @@ export const searchService = {
   // Fetch criminal records from EnformionGO API
   async fetchCriminalRecords(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.CRIMINAL_RECORDS, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.CRIMINAL_RECORDS, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO returns criminal records
@@ -356,12 +359,13 @@ export const searchService = {
   },
 
   // Fetch relatives from EnformionGO API
+  // Note: Relatives may be included in PersonSearch results
   async fetchRelatives(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.RELATIVES, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.PEOPLE_SEARCH, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO returns relative associations
@@ -387,10 +391,10 @@ export const searchService = {
   // Fetch property records from EnformionGO API
   async fetchPropertyRecords(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.PROPERTY_RECORDS, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.PROPERTY_RECORDS, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO returns property ownership records
@@ -422,10 +426,10 @@ export const searchService = {
   // Fetch contact enrichment data from EnformionGO API
   async fetchContactEnrichment(query) {
     try {
-      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.CONTACT_ENRICHMENT, {
-        first_name: query.firstName,
-        last_name: query.lastName,
-        location: query.location || null,
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.SEARCH_TYPES.CONTACT_ENRICHMENT, {
+        FirstName: query.firstName,
+        LastName: query.lastName,
+        Address: query.location ? { addressLine1: query.location } : null,
       })
 
       // EnformionGO contact enrichment provides additional contact details
@@ -453,33 +457,40 @@ export const searchService = {
   // Create or update person profile in database
   async createOrUpdatePersonProfile(data) {
     try {
-      // Verify user is authenticated and session is active
+      const generateUuid = () => {
+        if (globalThis.crypto?.randomUUID) {
+          return globalThis.crypto.randomUUID()
+        }
+        if (globalThis.crypto?.getRandomValues) {
+          const bytes = new Uint8Array(16)
+          globalThis.crypto.getRandomValues(bytes)
+          bytes[6] = (bytes[6] & 0x0f) | 0x40
+          bytes[8] = (bytes[8] & 0x3f) | 0x80
+          const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+        }
+        return `profile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+      }
+
+      // Ensure we have a valid session before proceeding
+      let session = await ensureValidSession()
+      
+      // Refresh session one more time to ensure it's active for the database request
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (currentSession) {
+        session = currentSession
+      }
+      
+      // Get user info
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) {
         console.error('User authentication error:', userError)
         throw new Error('User must be authenticated to create person profiles')
       }
 
-      // Get and verify session is active (refresh if needed)
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      // If no session, try to refresh
-      if (!session && !sessionError) {
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
-        if (refreshError) {
-          console.error('Session refresh error:', refreshError)
-          throw new Error('Active session required. Please sign in again.')
-        }
-        session = refreshedSession
-      }
-      
-      if (sessionError || !session) {
-        console.error('Session error:', sessionError, 'Session:', session)
-        throw new Error('Active session required. Please sign in again.')
-      }
-
-      // Log for debugging (remove in production)
+      // Log for debugging
       console.log('Creating person profile with user:', user.id, 'Session active:', !!session)
+      console.log('Session token present:', !!session?.access_token)
 
       // Check if profile exists
       const { data: existingProfile } = await supabase
@@ -490,68 +501,98 @@ export const searchService = {
         .maybeSingle()
 
       let profileId
+      let profileMetadata
 
       if (existingProfile) {
         // Update existing profile
-        const { data: updatedProfile, error } = await supabase
+        profileId = existingProfile.id
+        profileMetadata = data.personData || existingProfile.metadata
+
+        const { error } = await supabase
           .from('person_profiles')
           .update({
             age: data.age || existingProfile.age,
             last_updated: new Date().toISOString(),
-            metadata: data.personData || existingProfile.metadata,
+            metadata: profileMetadata,
           })
           .eq('id', existingProfile.id)
-          .select()
-          .single()
 
         if (error) throw error
-        profileId = updatedProfile.id
       } else {
-        // Ensure session is fresh before insert
-        if (session) {
-          // Refresh session to ensure token is valid
+        profileId = generateUuid()
+        profileMetadata = data.personData || {}
+
+        // Ensure session is fresh and properly set before insert
+        // Get the current session first
+        let { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !currentSession) {
+          // Try to refresh the session
           const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
-          if (!refreshError && refreshedSession) {
-            session = refreshedSession
+          if (refreshError || !refreshedSession) {
+            throw new Error('Session expired or invalid. Please sign out and sign back in.')
           }
+          currentSession = refreshedSession
         }
 
-        // Create new profile
-        const { data: newProfile, error } = await supabase
+        // Ensure the session is set on the client
+        if (currentSession && currentSession.access_token) {
+          // Set session explicitly to ensure it's active
+          const { error: setSessionError } = await supabase.auth.setSession({
+            access_token: currentSession.access_token,
+            refresh_token: currentSession.refresh_token
+          })
+          
+          if (setSessionError) {
+            console.error('Error setting session:', setSessionError)
+            throw new Error('Failed to set session. Please sign out and sign back in.')
+          }
+          
+          // Small delay to ensure session is propagated
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } else {
+          throw new Error('No valid session found. Please sign out and sign back in.')
+        }
+
+        // Verify session one more time before insert
+        const { data: { session: verifySession } } = await supabase.auth.getSession()
+        if (!verifySession || !verifySession.access_token) {
+          throw new Error('Session verification failed. Please sign out and sign back in.')
+        }
+
+        // Create new profile with explicit error handling
+        const { error } = await supabase
           .from('person_profiles')
           .insert({
+            id: profileId,
             first_name: data.firstName,
             last_name: data.lastName,
             age: data.age || null,
-            metadata: data.personData || {},
+            metadata: profileMetadata,
           })
-          .select()
-          .single()
 
         if (error) {
           // Provide more helpful error message for RLS violations
           if (error.message?.includes('row-level security') || error.code === '42501') {
             // Get current session again to debug
-            const { data: { session: currentSession } } = await supabase.auth.getSession()
+            const { data: { session: debugSession } } = await supabase.auth.getSession()
+            const { data: { user: debugUser } } = await supabase.auth.getUser()
+            
             console.error('RLS Error Details:', {
               error: error.message,
               errorCode: error.code,
               userId: user.id,
-              sessionActive: !!currentSession,
-              sessionExpiresAt: currentSession?.expires_at,
-              accessToken: currentSession?.access_token ? 'Present' : 'Missing'
+              debugUserId: debugUser?.id,
+              sessionActive: !!debugSession,
+              sessionExpiresAt: debugSession?.expires_at,
+              accessToken: debugSession?.access_token ? 'Present' : 'Missing',
+              tokenLength: debugSession?.access_token?.length || 0
             })
-            
-            // Try one more time with explicit session refresh
-            if (currentSession) {
-              await supabase.auth.refreshSession()
-            }
             
             throw new Error('Permission denied. The session may have expired. Please try signing out and signing back in, then try again.')
           }
           throw error
         }
-        profileId = newProfile.id
       }
 
       // Save addresses
@@ -624,16 +665,14 @@ export const searchService = {
         await supabase.from('relatives').insert(relativesToInsert)
       }
 
-      // Fetch complete profile
-      const { data: completeProfile, error: fetchError } = await supabase
-        .from('person_profiles')
-        .select('*')
-        .eq('id', profileId)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      return completeProfile
+      return {
+        id: profileId,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        age: data.age || existingProfile?.age || null,
+        last_updated: new Date().toISOString(),
+        metadata: profileMetadata,
+      }
     } catch (error) {
       console.error('Error creating/updating person profile:', error)
       throw error

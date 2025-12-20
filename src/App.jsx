@@ -10,6 +10,9 @@ import SearchResults from './pages/SearchResults'
 import SearchHistory from './pages/SearchHistory'
 import Favorites from './pages/Favorites'
 import Profile from './pages/Profile'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminRoute from './components/AdminRoute'
+import AddPersonInfo from './pages/AddPersonInfo'
 import './App.css'
 
 function App() {
@@ -63,6 +66,22 @@ function App() {
                 <ProtectedRoute>
                   <Profile />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/add-info"
+              element={
+                <ProtectedRoute>
+                  <AddPersonInfo />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               }
             />
             <Route path="/" element={<Navigate to="/login" replace />} />

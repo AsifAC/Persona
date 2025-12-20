@@ -255,12 +255,51 @@ Required environment variables:
 ```
 VITE_SUPABASE_URL=<supabase_project_url>
 VITE_SUPABASE_ANON_KEY=<supabase_anon_key>
-VITE_PEOPLE_DATA_API_KEY=<external_api_key>
-VITE_PEOPLE_DATA_API_URL=<external_api_base_url>
-VITE_CRIMINAL_RECORDS_API_KEY=<criminal_records_api_key>
-VITE_CRIMINAL_RECORDS_API_URL=<criminal_records_api_base_url>
-VITE_SOCIAL_MEDIA_API_KEY=<social_media_api_key>
-VITE_SOCIAL_MEDIA_API_URL=<social_media_api_base_url>
+VITE_ENFORMIONGO_PROXY_URL=<supabase_functions_url>/enformion-proxy
+VITE_ADMIN_EMAIL=<admin_email>
+VITE_ADMIN_EMAILS=<comma_separated_admin_emails>
+VITE_VERIFIER_EMAILS=<comma_separated_verifier_emails>
+```
+
+The EnformionGO credentials are configured as Supabase Edge Function secrets:
+
+```
+ENFORMIONGO_BASE_URL=<enformiongo_api_base_url>
+ENFORMIONGO_API_KEY_NAME=<enformiongo_access_profile_name>
+ENFORMIONGO_API_KEY_PASSWORD=<enformiongo_access_profile_password>
+ENFORMIONGO_CLIENT_TYPE=<required for JS clients, e.g. Persona-Web>
+```
+
+Optional per-search endpoints (only needed if EnformionGO does not accept the base URL with `galaxy-search-type`):
+
+```
+ENFORMIONGO_ENDPOINT_PERSON_SEARCH=<full endpoint URL>
+ENFORMIONGO_ENDPOINT_CONTACT_ENRICHMENT=<full endpoint URL>
+ENFORMIONGO_ENDPOINT_CONTACT_ENRICHMENT_PLUS=<full endpoint URL>
+ENFORMIONGO_ENDPOINT_REVERSE_PHONE=<full endpoint URL>
+ENFORMIONGO_ENDPOINT_CRIMINAL_RECORDS=<full endpoint URL>
+ENFORMIONGO_ENDPOINT_PROPERTY_RECORDS=<full endpoint URL>
+ENFORMIONGO_ENDPOINT_ADDRESS_SEARCH=<full endpoint URL>
+```
+
+Deploy the Edge Function and set secrets:
+
+```bash
+supabase functions deploy enformion-proxy
+supabase secrets set ENFORMIONGO_BASE_URL=... ENFORMIONGO_API_KEY_NAME=... ENFORMIONGO_API_KEY_PASSWORD=...
+```
+
+### Verified Submissions
+
+Run `database/verified_submissions.sql` in the Supabase SQL Editor to create the submission tables and RLS policies.
+
+Create a Supabase Storage bucket named `person-proofs` (private) for proof uploads.
+
+Add verifier users after they sign up:
+
+```sql
+INSERT INTO public.verification_admins (user_id, email)
+VALUES ('<user_uuid>', '<email>');
 ```
 
 ### Database Schema
@@ -275,6 +314,7 @@ Additional SQL scripts:
 - `database/fix_security_performance.sql`: RLS policy updates and performance indexes
 - `database/update_oauth_profile_trigger.sql`: OAuth profile synchronization trigger
 - `database/fix_person_profiles_rls.sql`: RLS policies for person_profiles table
+- `database/verified_submissions.sql`: Verified user submission tables and RLS policies
 
 ### Security
 

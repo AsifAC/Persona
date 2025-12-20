@@ -1,5 +1,5 @@
 // OAuth Buttons Component
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/useAuth'
 import './OAuthButtons.css'
 
 export default function OAuthButtons({ onError }) {

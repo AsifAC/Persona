@@ -62,6 +62,22 @@ export default function Favorites() {
     setLabelValue('')
   }
 
+  const handleViewResult = async (searchQuery) => {
+    if (!searchQuery?.id) return
+
+    try {
+      const result = await userService.getSearchResultByQueryId(searchQuery.id)
+      if (result) {
+        navigate('/results', { state: { result } })
+        return
+      }
+      navigate('/dashboard')
+    } catch (error) {
+      console.error('Error loading result:', error)
+      navigate('/dashboard')
+    }
+  }
+
   if (loading) {
     return (
       <div className="favorites-container">
@@ -139,7 +155,7 @@ export default function Favorites() {
               </div>
               <div className="favorite-actions">
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => handleViewResult(favorite.search_queries)}
                   className="view-button"
                 >
                   View Results

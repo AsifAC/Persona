@@ -1,7 +1,7 @@
 // Register Component
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/useAuth'
 import OAuthButtons from './OAuthButtons'
 import './Register.css'
 
@@ -64,7 +64,8 @@ export default function Register() {
       } else {
         navigate('/dashboard')
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Sign up error:', error)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)

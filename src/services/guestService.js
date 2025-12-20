@@ -249,6 +249,17 @@ export const guestService = {
     return { success: false }
   },
 
+  // Delete all search history items
+  deleteAllSearchHistory() {
+    const data = this.getGuestData()
+    if (data) {
+      data.searchHistory = []
+      this.saveGuestData(data)
+      return { success: true }
+    }
+    return { success: false }
+  },
+
   // Delete search query
   deleteSearchQuery(searchQueryId) {
     const data = this.getGuestData()
