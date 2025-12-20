@@ -1,6 +1,6 @@
 // Search Service - Handles person search and data aggregation
 import { supabase } from '../config/supabase'
-import { API_CONFIG, makeAPIRequest } from '../config/api'
+import { API_CONFIG, makeEnformionGORequest } from '../config/api'
 import { guestService } from './guestService'
 
 // Helper to check if in guest mode
@@ -50,10 +50,8 @@ export const searchService = {
         searchQuery = queryData
       }
 
-      // TODO: Replace these API calls with your actual data provider APIs
-      // Example providers: WhitePages, PeopleFinder, BeenVerified, TruthFinder, etc.
-      
-      const [personData, addresses, phoneNumbers, socialMedia, criminalRecords, relatives] = 
+      // Fetch all available data from EnformionGO API
+      const [personData, addresses, phoneNumbers, socialMedia, criminalRecords, relatives, propertyRecords, contactEnrichment] = 
         await Promise.allSettled([
           this.fetchPersonData(query),
           this.fetchAddresses(query),
@@ -61,32 +59,50 @@ export const searchService = {
           this.fetchSocialMedia(query),
           this.fetchCriminalRecords(query),
           this.fetchRelatives(query),
+          this.fetchPropertyRecords(query),
+          this.fetchContactEnrichment(query),
         ])
 
       // Step 3: Create or update person profile
       let personProfile
       if (isGuestMode()) {
         // Guest mode: create simple profile object
+        // Merge contact enrichment data into personData if available
+        const enrichedPersonData = personData.status === 'fulfilled' ? personData.value : {}
+        if (contactEnrichment.status === 'fulfilled' && contactEnrichment.value) {
+          Object.assign(enrichedPersonData, contactEnrichment.value)
+        }
+
         personProfile = {
           id: `profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           first_name: firstName,
           last_name: lastName,
           age: age || null,
           last_updated: new Date().toISOString(),
-          metadata: personData.status === 'fulfilled' ? personData.value : {},
+          metadata: {
+            ...enrichedPersonData,
+            propertyRecords: propertyRecords.status === 'fulfilled' ? propertyRecords.value : [],
+          },
         }
       } else {
         // Authenticated mode: save to database
+        // Merge contact enrichment data into personData if available
+        const enrichedPersonData = personData.status === 'fulfilled' ? personData.value : {}
+        if (contactEnrichment.status === 'fulfilled' && contactEnrichment.value) {
+          Object.assign(enrichedPersonData, contactEnrichment.value)
+        }
+
         personProfile = await this.createOrUpdatePersonProfile({
           firstName,
           lastName,
           age,
-          personData: personData.status === 'fulfilled' ? personData.value : null,
+          personData: enrichedPersonData,
           addresses: addresses.status === 'fulfilled' ? addresses.value : [],
           phoneNumbers: phoneNumbers.status === 'fulfilled' ? phoneNumbers.value : [],
           socialMedia: socialMedia.status === 'fulfilled' ? socialMedia.value : [],
           criminalRecords: criminalRecords.status === 'fulfilled' ? criminalRecords.value : [],
           relatives: relatives.status === 'fulfilled' ? relatives.value : [],
+          propertyRecords: propertyRecords.status === 'fulfilled' ? propertyRecords.value : [],
         })
       }
 
@@ -98,6 +114,7 @@ export const searchService = {
         socialMedia: socialMedia.status === 'fulfilled' ? socialMedia.value : [],
         criminalRecords: criminalRecords.status === 'fulfilled' ? criminalRecords.value : [],
         relatives: relatives.status === 'fulfilled' ? relatives.value : [],
+        propertyRecords: propertyRecords.status === 'fulfilled' ? propertyRecords.value : [],
       })
 
       // Step 5: Save search result
@@ -110,8 +127,9 @@ export const searchService = {
           socialMedia: socialMedia.status === 'fulfilled' ? socialMedia.value : [],
           criminalRecords: criminalRecords.status === 'fulfilled' ? criminalRecords.value : [],
           relatives: relatives.status === 'fulfilled' ? relatives.value : [],
+          propertyRecords: propertyRecords.status === 'fulfilled' ? propertyRecords.value : [],
         }
-        
+           
         searchResult = guestService.addSearchResult(
           searchQuery.id,
           personProfile,
@@ -157,6 +175,7 @@ export const searchService = {
           socialMedia: socialMedia.status === 'fulfilled' ? socialMedia.value : [],
           criminalRecords: criminalRecords.status === 'fulfilled' ? criminalRecords.value : [],
           relatives: relatives.status === 'fulfilled' ? relatives.value : [],
+          propertyRecords: propertyRecords.status === 'fulfilled' ? propertyRecords.value : [],
         },
         confidenceScore,
       }
@@ -166,166 +185,268 @@ export const searchService = {
     }
   },
 
-  // Fetch person data from external API
-  // TODO: Replace with your actual API implementation
+  // Fetch person data from EnformionGO API
   async fetchPersonData(query) {
     try {
-      // Example API call - replace with your actual API endpoint
-      const url = `${API_CONFIG.PEOPLE_DATA.BASE_URL}${API_CONFIG.PEOPLE_DATA.ENDPOINTS.SEARCH}`
-      
-      const response = await makeAPIRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.PEOPLE_DATA.API_KEY}`,
-        },
-        body: JSON.stringify({
-          first_name: query.firstName,
-          last_name: query.lastName,
-          age: query.age,
-          location: query.location,
-        }),
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.PEOPLE_SEARCH, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        age: query.age || null,
+        location: query.location || null,
       })
 
-      return response
-    } catch (error) {
-      console.error('Error fetching person data:', error)
-      // Return mock data for development if API is not configured
-      if (API_CONFIG.PEOPLE_DATA.API_KEY === 'YOUR_PEOPLE_DATA_API_KEY_HERE') {
-        return {
-          firstName: query.firstName,
-          lastName: query.lastName,
-          age: query.age,
-          location: query.location,
-        }
+      // Map EnformionGO response to our data structure
+      // EnformionGO typically returns an array of matches or a single result
+      const result = Array.isArray(response) ? response[0] : response
+      
+      return {
+        firstName: result.first_name || result.firstName || query.firstName,
+        lastName: result.last_name || result.lastName || query.lastName,
+        middleName: result.middle_name || result.middleName || null,
+        age: result.age || query.age || null,
+        dateOfBirth: result.date_of_birth || result.dateOfBirth || null,
+        location: result.location || query.location || null,
+        city: result.city || null,
+        state: result.state || null,
+        zipCode: result.zip_code || result.zipCode || null,
+        email: result.email || null,
+        gender: result.gender || null,
+        // Additional EnformionGO fields
+        fullName: result.full_name || result.fullName || null,
+        aliases: result.aliases || [],
+        education: result.education || [],
+        employment: result.employment || [],
+        licenses: result.licenses || [],
+        // Store raw response in metadata for future use
+        _raw: result,
       }
-      throw error
+    } catch (error) {
+      console.error('Error fetching person data from EnformionGO:', error)
+      // Return basic data structure if API fails
+      return {
+        firstName: query.firstName,
+        lastName: query.lastName,
+        age: query.age || null,
+        location: query.location || null,
+      }
     }
   },
 
-  // Fetch addresses from external API
-  // TODO: Replace with your actual API implementation
+  // Fetch addresses from EnformionGO API
   async fetchAddresses(query) {
     try {
-      // Example API call - replace with your actual API endpoint
-      const url = `${API_CONFIG.PEOPLE_DATA.BASE_URL}/addresses/search`
-      
-      const response = await makeAPIRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.PEOPLE_DATA.API_KEY}`,
-        },
-        body: JSON.stringify({
-          first_name: query.firstName,
-          last_name: query.lastName,
-          location: query.location,
-        }),
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.ADDRESS_SEARCH, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
       })
 
-      return Array.isArray(response) ? response : response.addresses || []
+      // EnformionGO returns address history
+      const addresses = Array.isArray(response) ? response : (response.addresses || response.address_history || [])
+      
+      return addresses.map(addr => ({
+        street: addr.street || addr.street_address || addr.address_line_1 || '',
+        city: addr.city || '',
+        state: addr.state || addr.state_code || '',
+        zipCode: addr.zip_code || addr.zip || addr.postal_code || '',
+        country: addr.country || 'USA',
+        isCurrent: addr.is_current || addr.current || false,
+        startDate: addr.start_date || addr.date_from || null,
+        endDate: addr.end_date || addr.date_to || addr.date_until || null,
+        addressType: addr.type || addr.address_type || 'residential',
+        // Additional EnformionGO fields
+        county: addr.county || null,
+        latitude: addr.latitude || addr.lat || null,
+        longitude: addr.longitude || addr.lng || null,
+        _raw: addr,
+      }))
     } catch (error) {
-      console.error('Error fetching addresses:', error)
-      // Return empty array if API fails
+      console.error('Error fetching addresses from EnformionGO:', error)
       return []
     }
   },
 
-  // Fetch phone numbers from external API
-  // TODO: Replace with your actual API implementation
+  // Fetch phone numbers from EnformionGO API
   async fetchPhoneNumbers(query) {
     try {
-      const url = `${API_CONFIG.PEOPLE_DATA.BASE_URL}/phones/search`
-      
-      const response = await makeAPIRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.PEOPLE_DATA.API_KEY}`,
-        },
-        body: JSON.stringify({
-          first_name: query.firstName,
-          last_name: query.lastName,
-          location: query.location,
-        }),
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.PHONE_SEARCH, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
       })
 
-      return Array.isArray(response) ? response : response.phones || []
+      // EnformionGO returns phone number history
+      const phones = Array.isArray(response) ? response : (response.phones || response.phone_numbers || [])
+      
+      return phones.map(phone => ({
+        number: phone.number || phone.phone || phone.phone_number || '',
+        type: phone.type || phone.phone_type || phone.line_type || 'mobile',
+        isCurrent: phone.is_current || phone.current || true,
+        lastVerified: phone.last_verified || phone.verified_date || phone.date_verified || null,
+        carrier: phone.carrier || phone.phone_carrier || null,
+        // Additional EnformionGO fields
+        countryCode: phone.country_code || null,
+        areaCode: phone.area_code || null,
+        _raw: phone,
+      }))
     } catch (error) {
-      console.error('Error fetching phone numbers:', error)
+      console.error('Error fetching phone numbers from EnformionGO:', error)
       return []
     }
   },
 
-  // Fetch social media profiles from external API
-  // TODO: Replace with your actual API implementation
+  // Fetch social media profiles from EnformionGO API
   async fetchSocialMedia(query) {
     try {
-      const url = `${API_CONFIG.SOCIAL_MEDIA.BASE_URL}${API_CONFIG.SOCIAL_MEDIA.ENDPOINTS.SEARCH}`
-      
-      const response = await makeAPIRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.SOCIAL_MEDIA.API_KEY}`,
-        },
-        body: JSON.stringify({
-          first_name: query.firstName,
-          last_name: query.lastName,
-          location: query.location,
-        }),
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.SOCIAL_MEDIA, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
       })
 
-      return Array.isArray(response) ? response : response.socialMedia || []
+      // EnformionGO returns social media profiles
+      const socialProfiles = Array.isArray(response) ? response : (response.social_media || response.profiles || [])
+      
+      return socialProfiles.map(profile => ({
+        platform: profile.platform || profile.network || profile.site || '',
+        username: profile.username || profile.handle || profile.user_id || '',
+        url: profile.url || profile.profile_url || profile.link || null,
+        lastActive: profile.last_active || profile.last_seen || profile.activity_date || null,
+        followers: profile.followers || profile.follower_count || null,
+        // Additional EnformionGO fields
+        verified: profile.verified || false,
+        bio: profile.bio || profile.description || null,
+        _raw: profile,
+      }))
     } catch (error) {
-      console.error('Error fetching social media:', error)
+      console.error('Error fetching social media from EnformionGO:', error)
       return []
     }
   },
 
-  // Fetch criminal records from external API
-  // TODO: Replace with your actual API implementation
+  // Fetch criminal records from EnformionGO API
   async fetchCriminalRecords(query) {
     try {
-      const url = `${API_CONFIG.CRIMINAL_RECORDS.BASE_URL}${API_CONFIG.CRIMINAL_RECORDS.ENDPOINTS.SEARCH}`
-      
-      const response = await makeAPIRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.CRIMINAL_RECORDS.API_KEY}`,
-        },
-        body: JSON.stringify({
-          first_name: query.firstName,
-          last_name: query.lastName,
-          location: query.location,
-        }),
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.CRIMINAL_RECORDS, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
       })
 
-      return Array.isArray(response) ? response : response.records || []
+      // EnformionGO returns criminal records
+      const records = Array.isArray(response) ? response : (response.records || response.criminal_records || [])
+      
+      return records.map(record => ({
+        caseNumber: record.case_number || record.caseNumber || record.docket_number || '',
+        charge: record.charge || record.offense || record.crime || '',
+        status: record.status || record.case_status || record.disposition || 'unknown',
+        recordDate: record.date || record.record_date || record.case_date || record.date_filed || null,
+        jurisdiction: record.jurisdiction || record.court || record.county || record.state || '',
+        // Additional EnformionGO fields
+        sentence: record.sentence || null,
+        fine: record.fine || null,
+        description: record.description || record.details || null,
+        courtName: record.court_name || record.court || null,
+        _raw: record,
+      }))
     } catch (error) {
-      console.error('Error fetching criminal records:', error)
+      console.error('Error fetching criminal records from EnformionGO:', error)
       return []
     }
   },
 
-  // Fetch relatives from external API
-  // TODO: Replace with your actual API implementation
+  // Fetch relatives from EnformionGO API
   async fetchRelatives(query) {
     try {
-      const url = `${API_CONFIG.PEOPLE_DATA.BASE_URL}/relatives/search`
-      
-      const response = await makeAPIRequest(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_CONFIG.PEOPLE_DATA.API_KEY}`,
-        },
-        body: JSON.stringify({
-          first_name: query.firstName,
-          last_name: query.lastName,
-          location: query.location,
-        }),
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.RELATIVES, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
       })
 
-      return Array.isArray(response) ? response : response.relatives || []
+      // EnformionGO returns relative associations
+      const relatives = Array.isArray(response) ? response : (response.relatives || response.associates || [])
+      
+      return relatives.map(relative => ({
+        firstName: relative.first_name || relative.firstName || '',
+        lastName: relative.last_name || relative.lastName || '',
+        relationship: relative.relationship || relative.relation || relative.type || 'unknown',
+        age: relative.age || null,
+        // Additional EnformionGO fields
+        middleName: relative.middle_name || relative.middleName || null,
+        city: relative.city || null,
+        state: relative.state || null,
+        _raw: relative,
+      }))
     } catch (error) {
-      console.error('Error fetching relatives:', error)
+      console.error('Error fetching relatives from EnformionGO:', error)
       return []
+    }
+  },
+
+  // Fetch property records from EnformionGO API
+  async fetchPropertyRecords(query) {
+    try {
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.PROPERTY_RECORDS, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
+      })
+
+      // EnformionGO returns property ownership records
+      const properties = Array.isArray(response) ? response : (response.properties || response.property_records || [])
+      
+      return properties.map(property => ({
+        address: property.address || property.property_address || '',
+        city: property.city || '',
+        state: property.state || property.state_code || '',
+        zipCode: property.zip_code || property.zip || '',
+        propertyType: property.property_type || property.type || 'residential',
+        ownershipType: property.ownership_type || property.tenure || null,
+        purchaseDate: property.purchase_date || property.date_purchased || null,
+        purchasePrice: property.purchase_price || property.price || null,
+        assessedValue: property.assessed_value || property.value || null,
+        // Additional EnformionGO fields
+        county: property.county || null,
+        lotSize: property.lot_size || property.acres || null,
+        yearBuilt: property.year_built || null,
+        squareFootage: property.square_footage || property.sqft || null,
+        _raw: property,
+      }))
+    } catch (error) {
+      console.error('Error fetching property records from EnformionGO:', error)
+      return []
+    }
+  },
+
+  // Fetch contact enrichment data from EnformionGO API
+  async fetchContactEnrichment(query) {
+    try {
+      const response = await makeEnformionGORequest(API_CONFIG.ENFORMIONGO.ENDPOINTS.CONTACT_ENRICHMENT, {
+        first_name: query.firstName,
+        last_name: query.lastName,
+        location: query.location || null,
+      })
+
+      // EnformionGO contact enrichment provides additional contact details
+      const enrichment = response || {}
+      
+      return {
+        email: enrichment.email || enrichment.email_address || null,
+        emails: enrichment.emails || enrichment.email_addresses || [],
+        phone: enrichment.phone || enrichment.phone_number || null,
+        // Additional enrichment fields
+        occupation: enrichment.occupation || enrichment.job_title || null,
+        employer: enrichment.employer || enrichment.company || null,
+        education: enrichment.education || enrichment.schools || [],
+        income: enrichment.income || enrichment.estimated_income || null,
+        vehicles: enrichment.vehicles || enrichment.vehicle_registrations || [],
+        licenses: enrichment.licenses || enrichment.license_records || [],
+        _raw: enrichment,
+      }
+    } catch (error) {
+      console.error('Error fetching contact enrichment from EnformionGO:', error)
+      return null
     }
   },
 
@@ -465,9 +586,9 @@ export const searchService = {
     let score = 0
     let maxScore = 0
 
-    // Person data match (30 points)
-    maxScore += 30
-    if (data.personData) score += 30
+    // Person data match (25 points)
+    maxScore += 25
+    if (data.personData) score += 25
 
     // Addresses (20 points)
     maxScore += 20
@@ -475,16 +596,16 @@ export const searchService = {
       score += Math.min(20, data.addresses.length * 5)
     }
 
-    // Phone numbers (20 points)
-    maxScore += 20
+    // Phone numbers (15 points)
+    maxScore += 15
     if (data.phoneNumbers && data.phoneNumbers.length > 0) {
-      score += Math.min(20, data.phoneNumbers.length * 5)
+      score += Math.min(15, data.phoneNumbers.length * 5)
     }
 
-    // Social media (15 points)
-    maxScore += 15
+    // Social media (10 points)
+    maxScore += 10
     if (data.socialMedia && data.socialMedia.length > 0) {
-      score += Math.min(15, data.socialMedia.length * 3)
+      score += Math.min(10, data.socialMedia.length * 3)
     }
 
     // Criminal records (10 points)
@@ -493,10 +614,16 @@ export const searchService = {
       score += 10
     }
 
-    // Relatives (5 points)
-    maxScore += 5
+    // Property records (10 points)
+    maxScore += 10
+    if (data.propertyRecords && data.propertyRecords.length > 0) {
+      score += Math.min(10, data.propertyRecords.length * 5)
+    }
+
+    // Relatives (10 points)
+    maxScore += 10
     if (data.relatives && data.relatives.length > 0) {
-      score += Math.min(5, data.relatives.length * 1)
+      score += Math.min(10, data.relatives.length * 2)
     }
 
     return Math.round((score / maxScore) * 100)

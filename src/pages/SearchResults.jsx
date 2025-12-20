@@ -119,6 +119,12 @@ export default function SearchResults() {
         data={result.relatives || []}
         emptyMessage="No relative information available"
       />
+
+      <DataSection
+        title="Property Records"
+        data={result.propertyRecords || personProfile?.metadata?.propertyRecords || []}
+        emptyMessage="No property records found"
+      />
     </div>
   )
 }
