@@ -50,7 +50,17 @@ export default function Register() {
         formData.lastName
       )
       if (error) {
-        setError(error.message || 'Failed to create account')
+        // Handle leaked password errors from Have I Been Pwned (HIBP)
+        const errorMessage = error.message || 'Failed to create account'
+        if (errorMessage.toLowerCase().includes('pwned') || 
+            errorMessage.toLowerCase().includes('breach') ||
+            errorMessage.toLowerCase().includes('compromised') ||
+            errorMessage.toLowerCase().includes('common password') ||
+            errorMessage.toLowerCase().includes('too common')) {
+          setError('This password was found in a known data breach. Please choose a different, more secure password.')
+        } else {
+          setError(errorMessage)
+        }
       } else {
         navigate('/dashboard')
       }
@@ -118,6 +128,9 @@ export default function Register() {
               disabled={loading}
               minLength={6}
             />
+            <small className="password-hint">
+              Must be at least 6 characters. Avoid passwords found in data breaches.
+            </small>
           </div>
           <div className="form-group">
             <label htmlFor="confirmPassword">Confirm Password</label>
