@@ -453,6 +453,34 @@ export const searchService = {
   // Create or update person profile in database
   async createOrUpdatePersonProfile(data) {
     try {
+      // Verify user is authenticated and session is active
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('User authentication error:', userError)
+        throw new Error('User must be authenticated to create person profiles')
+      }
+
+      // Get and verify session is active (refresh if needed)
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      // If no session, try to refresh
+      if (!session && !sessionError) {
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshError) {
+          console.error('Session refresh error:', refreshError)
+          throw new Error('Active session required. Please sign in again.')
+        }
+        session = refreshedSession
+      }
+      
+      if (sessionError || !session) {
+        console.error('Session error:', sessionError, 'Session:', session)
+        throw new Error('Active session required. Please sign in again.')
+      }
+
+      // Log for debugging (remove in production)
+      console.log('Creating person profile with user:', user.id, 'Session active:', !!session)
+
       // Check if profile exists
       const { data: existingProfile } = await supabase
         .from('person_profiles')
@@ -479,6 +507,15 @@ export const searchService = {
         if (error) throw error
         profileId = updatedProfile.id
       } else {
+        // Ensure session is fresh before insert
+        if (session) {
+          // Refresh session to ensure token is valid
+          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+          if (!refreshError && refreshedSession) {
+            session = refreshedSession
+          }
+        }
+
         // Create new profile
         const { data: newProfile, error } = await supabase
           .from('person_profiles')
@@ -491,7 +528,29 @@ export const searchService = {
           .select()
           .single()
 
-        if (error) throw error
+        if (error) {
+          // Provide more helpful error message for RLS violations
+          if (error.message?.includes('row-level security') || error.code === '42501') {
+            // Get current session again to debug
+            const { data: { session: currentSession } } = await supabase.auth.getSession()
+            console.error('RLS Error Details:', {
+              error: error.message,
+              errorCode: error.code,
+              userId: user.id,
+              sessionActive: !!currentSession,
+              sessionExpiresAt: currentSession?.expires_at,
+              accessToken: currentSession?.access_token ? 'Present' : 'Missing'
+            })
+            
+            // Try one more time with explicit session refresh
+            if (currentSession) {
+              await supabase.auth.refreshSession()
+            }
+            
+            throw new Error('Permission denied. The session may have expired. Please try signing out and signing back in, then try again.')
+          }
+          throw error
+        }
         profileId = newProfile.id
       }
 

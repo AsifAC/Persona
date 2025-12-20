@@ -1,4 +1,4 @@
-// Simple Loading Screen Component
+// Loading Screen Component
 export default function LoadingScreen() {
   return (
     <div style={{
