@@ -1,10 +1,11 @@
 .dashboard-container {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: transparent;
+  color: var(--text-on-dark);
 }
 
 .dashboard-nav {
-  background: white;
+  background: rgba(15, 15, 15, 0.9);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 15px 30px;
   display: flex;
@@ -17,8 +18,9 @@
 
 .nav-brand h1 {
   margin: 0;
-  color: #667eea;
+  color: var(--text-on-dark);
   font-size: 1.8rem;
+  font-family: 'Playfair Display', serif;
 }
 
 .nav-menu {
@@ -30,8 +32,8 @@
 .menu-button {
   padding: 8px 16px;
   background: transparent;
-  border: 2px solid #667eea;
-  color: #667eea;
+  border: 2px solid var(--text-on-dark);
+  color: var(--text-on-dark);
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -40,16 +42,16 @@
 }
 
 .menu-button:hover {
-  background: #667eea;
-  color: white;
+  background: var(--text-on-dark);
+  color: #111111;
 }
 
 .menu-dropdown {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: #1a1a1a;
+  border: 1px solid #2f2f2f;
   border-radius: 10px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   min-width: 200px;
@@ -64,7 +66,7 @@
   padding: 10px 12px;
   background: transparent;
   border: 1px solid transparent;
-  color: #333;
+  color: var(--text-on-dark);
   border-radius: 8px;
   text-align: left;
   cursor: pointer;
@@ -74,7 +76,7 @@
 }
 
 .menu-item:hover {
-  background: #f3f4f6;
+  background: #2a2a2a;
 }
 
 .menu-item.sign-out {
@@ -88,14 +90,14 @@
 }
 
 .menu-item.admin-link {
-  border-color: #9b59b6;
-  color: #9b59b6;
-  background: rgba(155, 89, 182, 0.1);
+  border-color: #3a3a3a;
+  color: var(--text-on-dark);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .menu-item.admin-link:hover {
-  background: #9b59b6;
-  color: white;
+  background: #2a2a2a;
+  color: var(--text-on-dark);
 }
 
 .dashboard-content {
@@ -110,13 +112,13 @@
 }
 
 .welcome-section h2 {
-  color: #333;
+  color: var(--text-on-dark);
   margin-bottom: 10px;
   font-size: 2rem;
 }
 
 .welcome-section p {
-  color: #666;
+  color: #d1d5db;
   font-size: 1.1rem;
 }
 
@@ -143,6 +145,16 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.api-warning {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8d7da;
+  font-size: 0.95rem;
 }
 
 @media (max-width: 768px) {

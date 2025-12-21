@@ -12,6 +12,14 @@
   color-scheme: light;
   color: #213547;
   background-color: #ffffff;
+  --app-bg: radial-gradient(1200px 700px at 10% 0%, #2b2b2b 0%, #1a1a1a 50%, #0d0d0d 100%);
+  --accent: #111111;
+  --accent-soft: #2b2b2b;
+  --accent-gradient: linear-gradient(135deg, #0f0f0f 0%, #2b2b2b 100%);
+  --surface: #ffffff;
+  --surface-muted: #f3f4f6;
+  --text-on-dark: #f3f4f6;
+  --text-muted: #6b7280;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -23,16 +31,17 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--app-bg);
 }
 
 a {
   font-weight: 500;
-  color: #667eea;
+  color: #111111;
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #764ba2;
+  color: #2b2b2b;
 }
 
 button {

@@ -1,6 +1,6 @@
 .admin-dashboard-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: transparent;
   padding: 2rem;
 }
 
@@ -22,10 +22,11 @@
   margin: 0;
   color: #333;
   font-size: 1.8rem;
+  font-family: 'Playfair Display', serif;
 }
 
 .back-button {
-  background: #667eea;
+  background: #111111;
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -36,7 +37,7 @@
 }
 
 .back-button:hover {
-  background: #5568d3;
+  background: #2b2b2b;
 }
 
 .admin-content {
@@ -55,7 +56,7 @@
 .admin-section h2 {
   margin-top: 0;
   color: #333;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #111111;
   padding-bottom: 0.5rem;
 }
 
@@ -97,14 +98,14 @@
 }
 
 .table-card:hover {
-  border-color: #667eea;
+  border-color: #111111;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .table-card.selected {
-  border-color: #667eea;
-  background: #e7ecff;
+  border-color: #111111;
+  background: #f1f1f1;
 }
 
 .table-card h3 {
@@ -121,7 +122,7 @@
 }
 
 .view-policies-btn {
-  background: #667eea;
+  background: #111111;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -134,7 +135,7 @@
 }
 
 .view-policies-btn:hover {
-  background: #5568d3;
+  background: #2b2b2b;
 }
 
 .policies-list {
@@ -143,7 +144,7 @@
 
 .policy-card {
   background: #f8f9fa;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #111111;
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1rem;
@@ -177,7 +178,7 @@
 
 .sql-editor-btn,
 .copy-query-btn {
-  background: #28a745;
+  background: #111111;
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -188,15 +189,15 @@
 }
 
 .sql-editor-btn:hover {
-  background: #218838;
+  background: #2b2b2b;
 }
 
 .copy-query-btn {
-  background: #17a2b8;
+  background: #111111;
 }
 
 .copy-query-btn:hover {
-  background: #138496;
+  background: #2b2b2b;
 }
 
 .quick-actions {
@@ -207,7 +208,7 @@
 }
 
 .quick-actions button {
-  background: #667eea;
+  background: #111111;
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -218,6 +219,6 @@
 }
 
 .quick-actions button:hover {
-  background: #5568d3;
+  background: #2b2b2b;
 }
 

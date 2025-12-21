@@ -9,6 +9,26 @@ const emptyPhone = () => ({ number: '', type: 'mobile', isCurrent: true })
 const emptySocial = () => ({ platform: '', username: '', url: '' })
 const emptyRecord = () => ({ caseNumber: '', charge: '', status: '', recordDate: '', jurisdiction: '' })
 const emptyRelative = () => ({ firstName: '', lastName: '', relationship: '', age: '' })
+const relationshipOptions = [
+  'Parent',
+  'Child',
+  'Sibling',
+  'Spouse',
+  'Partner',
+  'Grandparent',
+  'Grandchild',
+  'Aunt',
+  'Uncle',
+  'Cousin',
+  'Niece',
+  'Nephew',
+  'Stepparent',
+  'Stepchild',
+  'Stepsibling',
+  'In-law',
+  'Guardian',
+  'Other',
+]
 
 export default function AddPersonInfo() {
   const navigate = useNavigate()
@@ -398,6 +418,7 @@ export default function AddPersonInfo() {
                   placeholder="Relationship"
                   value={relative.relationship}
                   onChange={(e) => updateListItem('relatives', index, { relationship: e.target.value })}
+                  list="relative-relationship-options"
                 />
                 <input
                   type="number"
@@ -419,6 +440,11 @@ export default function AddPersonInfo() {
             <button type="button" className="add-button" onClick={() => addListItem('relatives', emptyRelative)}>
               Add Relative
             </button>
+            <datalist id="relative-relationship-options">
+              {relationshipOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
           </section>
 
           <section className="form-section">

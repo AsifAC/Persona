@@ -69,10 +69,6 @@ export default function Login() {
         <div className="divider">
           <span>OR</span>
         </div>
-        <OAuthButtons onError={setError} />
-        <div className="divider">
-          <span>OR</span>
-        </div>
         <button
           onClick={() => {
             signInAsGuest()

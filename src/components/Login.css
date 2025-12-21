@@ -3,12 +3,12 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: transparent;
   padding: 20px;
 }
 
 .login-card {
-  background: white;
+  background: var(--surface);
   border-radius: 12px;
   padding: 40px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
@@ -18,7 +18,7 @@
 
 .login-card h1 {
   text-align: center;
-  color: #667eea;
+  color: #111111;
   margin-bottom: 10px;
   font-size: 2.5rem;
 }
@@ -44,22 +44,29 @@
 .form-group input {
   width: 100%;
   padding: 12px;
-  border: 2px solid #e0e0e0;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 16px;
   transition: border-color 0.3s;
   box-sizing: border-box;
+  background: #f3f4f6;
+  color: #111111;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #9ca3af;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.form-group input::placeholder {
+  color: #6b7280;
 }
 
 .submit-button {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--accent-gradient);
   color: white;
   border: none;
   border-radius: 8px;
@@ -95,7 +102,7 @@
 }
 
 .signup-link a {
-  color: #667eea;
+  color: #111111;
   text-decoration: none;
   font-weight: 500;
 }
@@ -127,7 +134,7 @@
 .guest-button {
   width: 100%;
   padding: 12px;
-  background: #f39c12;
+  background: #9ca3af;
   color: white;
   border: none;
   border-radius: 8px;

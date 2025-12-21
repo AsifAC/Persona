@@ -37,7 +37,9 @@ export default function SearchForm({ onSearch, loading = false }) {
       <form onSubmit={handleSubmit} className="search-form">
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="firstName">First Name *</label>
+            <label htmlFor="firstName">
+              First Name <span className="required-star">*</span>
+            </label>
             <input
               type="text"
               id="firstName"
@@ -50,7 +52,9 @@ export default function SearchForm({ onSearch, loading = false }) {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="lastName">Last Name *</label>
+            <label htmlFor="lastName">
+              Last Name <span className="required-star">*</span>
+            </label>
             <input
               type="text"
               id="lastName"

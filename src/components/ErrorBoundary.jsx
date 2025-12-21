@@ -38,7 +38,7 @@ class ErrorBoundary extends Component {
             }}
             style={{
               padding: '12px 24px',
-              background: '#667eea',
+              background: '#111111',
               color: 'white',
               border: 'none',
               borderRadius: '8px',

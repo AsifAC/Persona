@@ -117,6 +117,16 @@ export default function Dashboard() {
               >
                 Add Person Info
               </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false)
+                  navigate('/support')
+                }}
+                className="menu-item"
+                role="menuitem"
+              >
+                Support
+              </button>
               {isAdmin(user) && (
                 <button
                   onClick={() => {
@@ -174,6 +184,9 @@ export default function Dashboard() {
         {error && <div className="error-banner">{error}</div>}
 
         <SearchForm onSearch={handleSearch} loading={loading} />
+        <div className="api-warning">
+          EnformionGO keys are not configured in Supabase, so real-time search data is unavailable.
+        </div>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import './OAuthButtons.css'
 
 export default function OAuthButtons({ onError }) {
   const { signInWithOAuth, loading } = useAuth()
+  return null
 
   const handleOAuthSignIn = async (provider) => {
     try {

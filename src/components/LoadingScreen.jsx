@@ -6,7 +6,7 @@ export default function LoadingScreen() {
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: 'linear-gradient(135deg, #0f0f0f 0%, #2b2b2b 100%)',
       color: 'white'
     }}>
       <div style={{ textAlign: 'center' }}>
