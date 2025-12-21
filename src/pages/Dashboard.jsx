@@ -90,6 +90,16 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   setMenuOpen(false)
+                  navigate('/add-info')
+                }}
+                className="menu-item"
+                role="menuitem"
+              >
+                Add Person Info
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false)
                   navigate('/history')
                 }}
                 className="menu-item"
@@ -100,22 +110,22 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   setMenuOpen(false)
+                  navigate('/')
+                }}
+                className="menu-item"
+                role="menuitem"
+              >
+                Landing Page
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false)
                   navigate('/favorites')
                 }}
                 className="menu-item"
                 role="menuitem"
               >
                 Favorites
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false)
-                  navigate('/add-info')
-                }}
-                className="menu-item"
-                role="menuitem"
-              >
-                Add Person Info
               </button>
               <button
                 onClick={() => {
