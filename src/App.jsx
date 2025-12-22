@@ -25,16 +25,16 @@ function TitleManager() {
   useEffect(() => {
     const titles = {
       '/': 'Persona',
-      '/login': 'Login — Persona',
-      '/register': 'Register — Persona',
-      '/dashboard': 'Dashboard — Persona',
-      '/results': 'Search Results — Persona',
-      '/history': 'Search History — Persona',
-      '/favorites': 'Favorites — Persona',
-      '/profile': 'Profile — Persona',
-      '/add-info': 'Add Info — Persona',
-      '/support': 'Support — Persona',
-      '/admin': 'Admin — Persona',
+      '/login': 'Login - Persona',
+      '/register': 'Register - Persona',
+      '/dashboard': 'Dashboard - Persona',
+      '/results': 'Search Results - Persona',
+      '/history': 'Search History - Persona',
+      '/favorites': 'Favorites - Persona',
+      '/profile': 'Profile - Persona',
+      '/add-info': 'Add Info - Persona',
+      '/support': 'Support - Persona',
+      '/admin': 'Admin - Persona',
     }
 
     document.title = titles[location.pathname] || 'Persona'
