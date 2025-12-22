@@ -6,24 +6,11 @@ import { guestService } from '../services/guestService'
 import { AuthContext } from './authContextStore'
 
 export const AuthProvider = ({ children }) => {
-  const [initialGuestProfile] = useState(() => {
-    if (!guestService.isGuestMode()) return null
-    return guestService.getProfile() || null
-  })
-  const [user, setUser] = useState(() => {
-    if (!initialGuestProfile) return null
-    return {
-      id: initialGuestProfile.id,
-      email: initialGuestProfile.email,
-      user_metadata: {
-        first_name: initialGuestProfile.first_name,
-        last_name: initialGuestProfile.last_name,
-      },
-    }
-  })
+  const [initialGuestProfile] = useState(null)
+  const [user, setUser] = useState(null)
   const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(() => !initialGuestProfile)
-  const [isGuest, setIsGuest] = useState(() => !!initialGuestProfile)
+  const [loading, setLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(false)
 
   const applyAuthenticatedSession = (nextSession) => {
     setSession(nextSession)
@@ -39,9 +26,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let subscription = null
 
-    if (initialGuestProfile) {
-      return () => {}
-    }
+    // Guest mode disabled for now; clear any persisted guest state.
+    guestService.disableGuestMode()
 
     // Get initial session for authenticated users
     authService.getSession()
@@ -57,20 +43,18 @@ export const AuthProvider = ({ children }) => {
       })
 
     // Listen for auth changes (only for authenticated users)
-    if (!guestService.isGuestMode()) {
-      try {
-        const authStateResult = authService.onAuthStateChange(
-          async (event, session) => {
-            applyAuthenticatedSession(session)
-          }
-        )
-
-        if (authStateResult?.data?.subscription) {
-          subscription = authStateResult.data.subscription
+    try {
+      const authStateResult = authService.onAuthStateChange(
+        async (event, session) => {
+          applyAuthenticatedSession(session)
         }
-      } catch (error) {
-        console.error('Error setting up auth state listener:', error)
+      )
+
+      if (authStateResult?.data?.subscription) {
+        subscription = authStateResult.data.subscription
       }
+    } catch (error) {
+      console.error('Error setting up auth state listener:', error)
     }
 
     return () => {
@@ -100,38 +84,11 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     setLoading(true)
-    if (isGuest) {
-      guestService.disableGuestMode()
-      setUser(null)
-      setIsGuest(false)
-      setLoading(false)
-      return { error: null }
-    } else {
-      const { error } = await authService.signOut()
-      setUser(null)
-      setIsGuest(false)
-      setLoading(false)
-      return { error }
-    }
-  }
-
-  const signInAsGuest = () => {
-    setLoading(true)
-    guestService.enableGuestMode()
-    const guestProfile = guestService.getProfile()
-    if (guestProfile) {
-      setUser({
-        id: guestProfile.id,
-        email: guestProfile.email,
-        user_metadata: {
-          first_name: guestProfile.first_name,
-          last_name: guestProfile.last_name,
-        },
-      })
-      setIsGuest(true)
-      setSession(null)
-    }
+    const { error } = await authService.signOut()
+    setUser(null)
+    setIsGuest(false)
     setLoading(false)
+    return { error }
   }
 
   const signInWithOAuth = async (provider) => {
@@ -148,7 +105,6 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    signInAsGuest,
     signInWithOAuth,
     isAuthenticated: !!user,
     isGuest,

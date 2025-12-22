@@ -15,7 +15,7 @@ export default function Register() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signUp, signInAsGuest } = useAuth()
+  const { signUp } = useAuth()
   const navigate = useNavigate()
 
   const handleChange = (e) => {
@@ -150,22 +150,7 @@ export default function Register() {
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
-        <div className="divider">
-          <span>OR</span>
-        </div>
-        <button
-          onClick={() => {
-            signInAsGuest()
-            navigate('/dashboard')
-          }}
-          className="guest-button"
-          disabled={loading}
-        >
-          Continue as Guest
-        </button>
-        <p className="guest-note">
-          Guest mode saves data locally on your device
-        </p>
+        {/* Guest mode disabled for now */}
         <p className="login-link">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>

@@ -10,7 +10,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn, signInAsGuest } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -66,22 +66,7 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <div className="divider">
-          <span>OR</span>
-        </div>
-        <button
-          onClick={() => {
-            signInAsGuest()
-            navigate('/dashboard')
-          }}
-          className="guest-button"
-          disabled={loading}
-        >
-          Continue as Guest
-        </button>
-        <p className="guest-note">
-          Guest mode saves data locally on your device
-        </p>
+        {/* Guest mode disabled for now */}
         <p className="signup-link">
           Don't have an account? <Link to="/register">Sign up</Link>
         </p>
