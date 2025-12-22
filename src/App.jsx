@@ -1,5 +1,5 @@
 // Main App Component with Routing
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -18,6 +18,30 @@ import Support from './pages/Support'
 import BackgroundScene from './components/BackgroundScene'
 import './App.css'
 
+function TitleManager() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const titles = {
+      '/': 'Persona',
+      '/login': 'Login — Persona',
+      '/register': 'Register — Persona',
+      '/dashboard': 'Dashboard — Persona',
+      '/results': 'Search Results — Persona',
+      '/history': 'Search History — Persona',
+      '/favorites': 'Favorites — Persona',
+      '/profile': 'Profile — Persona',
+      '/add-info': 'Add Info — Persona',
+      '/support': 'Support — Persona',
+      '/admin': 'Admin — Persona',
+    }
+
+    document.title = titles[location.pathname] || 'Persona'
+  }, [location.pathname])
+
+  return null
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -28,6 +52,7 @@ function App() {
             v7_relativeSplatPath: true,
           }}
         >
+          <TitleManager />
           <BackgroundScene />
           <div className="app-shell">
             <Routes>
